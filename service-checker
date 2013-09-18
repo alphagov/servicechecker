@@ -33,9 +33,11 @@ def check_slug_links_to_domain(slug,domain):
     slug_text = url.read()
     if domain in slug_text.lower():
         good("The GOV.UK page (https://www.gov.uk%s) links to %s" % (slug,domain),2)
+        return 0
     else:
         exitcode = exitcode + 1
         bad("The GOV.UK page (http://www.gov.uk%s) does not link to %s" % (slug,domain),2)
+        return 1
 
 def check_listening_on_https(slug,domain):
     info("")
@@ -47,10 +49,12 @@ def check_bare_ssl_domain_redirects_to_slug(slug,domain):
     location = url.geturl()
     if location == slug:
         good("The bare Service Domain redirects to the GOV.UK slug.",2)
+        return 0
     else:
         exitcode = exitcode + 1
         bad("The Service Domain does not redirect to the GOV.UK slug.",2)
         bad("https://%s/ -> %s" % (domain,location),3)
+        return 1
 
 def check_non_ssl_domain_redirects_to_ssl(slug,domain):
     global exitcode
@@ -60,10 +64,12 @@ def check_non_ssl_domain_redirects_to_ssl(slug,domain):
     ssl_location = "https://%s/" % domain
     if location == ssl_location:
         good("Non-SSL requests to the Service Domain redirect to SSL",2)
+        return 0
     else:
         exitcode = exitcode + 1
         bad("Non-SSL requests to the Service Domain do not redirect to correct SSL location",2)
         bad("http://%s/ -> %s" % (domain, location),3)
+        return 1
 
 def check_for_HSTS_header(slug,domain):
     global exitcode
@@ -77,9 +83,11 @@ def check_for_HSTS_header(slug,domain):
     if 'Strict-Transport-Security' in header_array.keys():
         good("Strict-Transport-Security (HSTS) Header is set",2)
         good("Strict-Transport-Security: %s" % headers['Strict-Transport-Security'],3)
+        return 0
     else:
         exitcode = exitcode + 1
         bad("Strict-Transport-Security (HSTS) Header is not set",2)
+        return 1
 
 if not os.path.isdir('./services'):
     error("./services directory does not exist")
@@ -95,6 +103,7 @@ for yamlfile in yamlfiles:
     fh = open(yamlfile, "r")
     services = yaml.load_all(fh)
     for service in services:
+        service_fails = 0
         # Validate YAML
         if 'title' in service.keys():
             title = service['title']
@@ -112,10 +121,15 @@ for yamlfile in yamlfiles:
         info("Checking service: %s" % title)
         info("    Slug:   %s" % govuk_slug)
         info("    Domain: %s" % service_domain)
-        check_slug_links_to_domain(govuk_slug,service_domain)
-        check_bare_ssl_domain_redirects_to_slug(govuk_slug,service_domain)
-        check_non_ssl_domain_redirects_to_ssl(govuk_slug,service_domain)
-        check_for_HSTS_header(govuk_slug,service_domain)
+        service_fails += check_slug_links_to_domain(govuk_slug,service_domain)
+        service_fails += check_bare_ssl_domain_redirects_to_slug(govuk_slug,service_domain)
+        service_fails += check_non_ssl_domain_redirects_to_ssl(govuk_slug,service_domain)
+        service_fails += check_for_HSTS_header(govuk_slug,service_domain)
+        info("Results for %s" % title, 1)
+        if service_fails == 0:
+            good("Service passed all checks", 2)
+        else:
+            bad("Service failed %s checks" % service_fails, 2)
 
 info("Summary results:")
 if exitcode > 0:
