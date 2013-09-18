@@ -21,7 +21,8 @@ def info(message,indentlevel=0):
 
 
 def good(message,indentlevel=0):
-    print "\033[32mGOOD:  %s%s\033[0m" % (indent(indentlevel),message)
+    if indentlevel == 0 or 'DEBUG' in os.environ.keys():
+        print "\033[32mGOOD:  %s%s\033[0m" % (indent(indentlevel),message)
 
 def bad(message,indentlevel=0):
     print "\033[31mBAD:   %s%s\033[0m" % (indent(indentlevel),message)
@@ -184,14 +185,14 @@ for yamlfile in yamlfiles:
         service_fails += check_for_robots_txt(service_domain)
         info("Results for %s" % title, 1)
         if service_fails == 0:
-            good("Service passed all checks", 2)
+            good("Service passed all checks", 0)
         else:
-            bad("Service failed %s checks" % service_fails, 2)
+            bad("Service failed %s checks" % service_fails, 0)
         exitcode += service_fails
 
 info("Summary results:")
 if exitcode > 0:
-    bad("Total checks failed: %s" % exitcode, 1)
+    bad("Total checks failed: %s" % exitcode, 0)
 else:
-    good("All checks successful!", 1)
+    good("All checks successful!", 0)
 sys.exit(exitcode)
