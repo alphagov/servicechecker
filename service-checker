@@ -100,7 +100,7 @@ def check_for_robots_txt(domain):
         return 1
 
 def check_cookies(domain, start_page):
-    failed = 0
+    failed = False
     info("Checking cookies are HttpOnly, Secure and scoped to the domain",1)
     url = urllib2.urlopen("https://%s%s" % (domain, start_page))
     cookie_domain = "domain=" + domain
@@ -108,22 +108,23 @@ def check_cookies(domain, start_page):
     for header in headers:
         key, value = header.rstrip().split(': ', 1)
         if key.lower() == 'set-cookie':
-            info("Found a Set-Cookie header",2)
-            info("Set-Cookie: %s" % value,3)
             cookie_settings = value.lower().split('; ')
             if 'httponly' not in cookie_settings:
-                bad("HttpOnly is not set",3)
+                bad("HttpOnly is not set",2)
+                bad("Set-Cookie: %s" % value,3)
                 failed = True
             if 'secure' not in cookie_settings:
-                bad("Secure is not set",3)
+                bad("Secure is not set",2)
+                bad("Set-Cookie: %s" % value,3)
                 failed = True
             if cookie_domain not in cookie_settings:
-                bad("Cookie not scoped to %s" % domain,3)
+                bad("Cookie not scoped to domain=%s" % domain,2)
+                bad("Set-Cookie: %s" % value,3)
                 failed = True
     if failed:
         return 1
     else:
-        good("All cookies are set correctly",2)
+        good("All cookies are set correctly",1)
         return 0
 
 
