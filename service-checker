@@ -1,0 +1,103 @@
+#!/usr/bin/env python
+
+import glob
+import os
+import sys
+import urllib2
+import yaml
+
+# Output Functions
+
+def error(message):
+    print "\033[95mERROR: %s\033[0m" % message
+    sys.exit(1)
+
+def info(message):
+    print "\033[34mINFO:  %s\033[0m" % message
+
+def good(message):
+    print "\033[32mGOOD:  %s\033[0m" % message
+
+def bad(message):
+    print "\033[31mBAD:   %s\033[0m" % message
+
+# Check functions
+
+def check_slug_links_to_domain(slug,domain):
+    info("    Checking GOV.UK slug contains a link to the Service Domain")
+    url = urllib2.urlopen("https://www.gov.uk%s" % slug)
+    slug_text = url.read()
+    if domain in slug_text.lower():
+        good("        The GOV.UK page (https://www.gov.uk%s) links to %s" % (slug,domain))
+    else:
+        bad("        The GOV.UK page (http://www.gov.uk%s) does not link to %s" % (slug,domain))
+
+def check_bare_ssl_domain_redirects_to_slug(slug,domain):
+    info("    Checking that the bare Service Domain redirects back to the GOV.UK Slug")
+    url = urllib2.urlopen("https://%s/" % domain)
+    location = url.geturl()
+    if location == slug:
+        good("        The bare Service Domain redirects to the GOV.UK slug.")
+    else:
+        bad("        The Service Domain does not redirect to the GOV.UK slug.")
+        bad("            https://%s/ -> %s" % (domain,location))
+
+def check_non_ssl_domain_redirects_to_ssl(slug,domain):
+    info("    Checking that HTTP requests are redirected to HTTPS")
+    url = urllib2.urlopen("http://%s/" % domain)
+    location = url.geturl()
+    ssl_location = "https://%s/" % domain
+    if location == ssl_location:
+        good("        Non-SSL requests to the Service Domain redirect to SSL")
+    else:
+        bad("        Non-SSL requests to the Service Domain do not redirect to correct SSL location")
+        bad("            http://%s/ -> %s" % (domain, location))
+
+def check_for_HSTS_header(slug,domain):
+    info("    Checking that Strict-Transport-Security is enforced")
+    url = urllib2.urlopen("http://%s/" % domain)
+    headers = url.info().headers
+    header_array = {}
+    for header in headers:
+        key, value = header.split(': ', 1)
+        header_array[key] = value
+    if 'Strict-Transport-Security' in header_array.keys():
+        good("        Strict-Transport-Security (HSTS) Header is set")
+        good("            Strict-Transport-Security: %s" % headers['Strict-Transport-Security'])
+    else:
+        bad("        Strict-Transport-Security (HSTS) Header is not set")
+
+if not os.path.isdir('./services'):
+    error("./services directory does not exist")
+
+yamlfiles = glob.glob("./services/*.yml")
+
+if len(yamlfiles) == 0:
+    error("No .yml files found in ./services/")
+
+for yamlfile in yamlfiles:
+    fh = open(yamlfile, "r")
+    services = yaml.load_all(fh)
+    for service in services:
+        # Validate YAML
+        if 'title' in service.keys():
+            title = service['title']
+        else:
+            error("title is not defined in file: %s" % yamlfile)
+        if 'govuk_slug' in service.keys():
+            govuk_slug = service['govuk_slug']
+        else:
+            error("govuk_slug is not defined in file: %s" % yamlfile)
+        if 'service_domain' in service.keys():
+            service_domain = service['service_domain']
+        else:
+            error("service_domain is not defined in file: %s" % yamlfile)
+
+        info("Checking service: %s" % title)
+        info("    Slug:   %s" % govuk_slug)
+        info("    Domain: %s" % service_domain)
+        check_slug_links_to_domain(govuk_slug,service_domain)
+        check_bare_ssl_domain_redirects_to_slug(govuk_slug,service_domain)
+        check_non_ssl_domain_redirects_to_ssl(govuk_slug,service_domain)
+        check_for_HSTS_header(govuk_slug,service_domain)
+
