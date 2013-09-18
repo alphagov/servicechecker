@@ -141,7 +141,10 @@ def check_cookies(domain, start_page):
 if not os.path.isdir('./services'):
     error("./services directory does not exist")
 
-yamlfiles = glob.glob("./services/*.yml")
+if len(sys.argv) == 1:
+    yamlfiles = glob.glob("./services/*.yml")
+else:
+    yamlfiles = glob.glob("./services/%s.yml" % sys.argv[1])
 
 if len(yamlfiles) == 0:
     error("No .yml files found in ./services/")
