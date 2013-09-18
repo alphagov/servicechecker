@@ -24,6 +24,15 @@ def good(message,indentlevel=0):
 def bad(message,indentlevel=0):
     print "\033[31mBAD:   %s%s\033[0m" % (indent(indentlevel),message)
 
+# Helpers
+
+def header_dict(headers):
+    dict = {}
+    for header in headers:
+        key, value = header.split(': ', 1)
+        dict[key.lower()] = value.rstrip()
+    return dict
+
 # Check functions
 
 def check_slug_links_to_domain(slug,domain):
@@ -77,14 +86,10 @@ def check_for_HSTS_header(slug,domain):
     global exitcode
     info("Checking that Strict-Transport-Security is enforced",1)
     url = urllib2.urlopen("https://%s/" % domain)
-    headers = url.info().headers
-    header_dict = {}
-    for header in headers:
-        key, value = header.split(': ', 1)
-        header_dict[key] = value
-    if 'Strict-Transport-Security' in header_dict.keys():
+    headers = header_dict(url.info().headers)
+    if 'strict-transport-security' in headers.keys():
         good("Strict-Transport-Security (HSTS) Header is set",2)
-        good("Strict-Transport-Security: %s" % header_dict['Strict-Transport-Security'],3)
+        good("Strict-Transport-Security: %s" % headers['strict-transport-security'],3)
         return 0
     else:
         exitcode = exitcode + 1
@@ -95,16 +100,12 @@ def check_for_robots_txt(domain):
     global exitcode
     info("Checking that robots.txt is present",1)
     url = urllib2.urlopen("https://%s/robots.txt" % domain)
-    headers = url.info().headers
-    header_dict = {}
-    for header in headers:
-        key, value = header.split(': ', 1)
-        header_dict[key.lower()] = value.rstrip()
-    if header_dict['content-type'] == "text/plain":
+    headers = header_dict(url.info().headers)
+    if headers['content-type'] == "text/plain":
         good("robots.txt exists and is text/plain",2)
         return 0
     else:
-        bad("robots.txt is not text/plain: |%s|" % header_dict['content-type'],2)
+        bad("robots.txt is not text/plain: %s" % headers['content-type'],2)
         return 1
 
 if not os.path.isdir('./services'):
