@@ -24,25 +24,30 @@ def bad(message):
 # Check functions
 
 def check_slug_links_to_domain(slug,domain):
+    global exitcode
     info("    Checking GOV.UK slug contains a link to the Service Domain")
     url = urllib2.urlopen("https://www.gov.uk%s" % slug)
     slug_text = url.read()
     if domain in slug_text.lower():
         good("        The GOV.UK page (https://www.gov.uk%s) links to %s" % (slug,domain))
     else:
+        exitcode = exitcode + 1
         bad("        The GOV.UK page (http://www.gov.uk%s) does not link to %s" % (slug,domain))
 
 def check_bare_ssl_domain_redirects_to_slug(slug,domain):
+    global exitcode
     info("    Checking that the bare Service Domain redirects back to the GOV.UK Slug")
     url = urllib2.urlopen("https://%s/" % domain)
     location = url.geturl()
     if location == slug:
         good("        The bare Service Domain redirects to the GOV.UK slug.")
     else:
+        exitcode = exitcode + 1
         bad("        The Service Domain does not redirect to the GOV.UK slug.")
         bad("            https://%s/ -> %s" % (domain,location))
 
 def check_non_ssl_domain_redirects_to_ssl(slug,domain):
+    global exitcode
     info("    Checking that HTTP requests are redirected to HTTPS")
     url = urllib2.urlopen("http://%s/" % domain)
     location = url.geturl()
@@ -50,10 +55,12 @@ def check_non_ssl_domain_redirects_to_ssl(slug,domain):
     if location == ssl_location:
         good("        Non-SSL requests to the Service Domain redirect to SSL")
     else:
+        exitcode = exitcode + 1
         bad("        Non-SSL requests to the Service Domain do not redirect to correct SSL location")
         bad("            http://%s/ -> %s" % (domain, location))
 
 def check_for_HSTS_header(slug,domain):
+    global exitcode
     info("    Checking that Strict-Transport-Security is enforced")
     url = urllib2.urlopen("http://%s/" % domain)
     headers = url.info().headers
@@ -65,6 +72,7 @@ def check_for_HSTS_header(slug,domain):
         good("        Strict-Transport-Security (HSTS) Header is set")
         good("            Strict-Transport-Security: %s" % headers['Strict-Transport-Security'])
     else:
+        exitcode = exitcode + 1
         bad("        Strict-Transport-Security (HSTS) Header is not set")
 
 if not os.path.isdir('./services'):
@@ -74,6 +82,8 @@ yamlfiles = glob.glob("./services/*.yml")
 
 if len(yamlfiles) == 0:
     error("No .yml files found in ./services/")
+
+exitcode = 0
 
 for yamlfile in yamlfiles:
     fh = open(yamlfile, "r")
@@ -100,4 +110,4 @@ for yamlfile in yamlfiles:
         check_bare_ssl_domain_redirects_to_slug(govuk_slug,service_domain)
         check_non_ssl_domain_redirects_to_ssl(govuk_slug,service_domain)
         check_for_HSTS_header(govuk_slug,service_domain)
-
+sys.exit(exitcode)
