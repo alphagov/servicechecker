@@ -39,9 +39,6 @@ def check_slug_links_to_domain(slug,domain):
         bad("The GOV.UK page (http://www.gov.uk%s) does not link to %s" % (slug,domain),2)
         return 1
 
-def check_listening_on_https(slug,domain):
-    info("")
-
 def check_bare_ssl_domain_redirects_to_slug(slug,domain):
     global exitcode
     info("Checking that the bare Service Domain redirects back to the GOV.UK Slug",1)
@@ -56,20 +53,25 @@ def check_bare_ssl_domain_redirects_to_slug(slug,domain):
         bad("https://%s/ -> %s" % (domain,location),3)
         return 1
 
-def check_non_ssl_domain_redirects_to_ssl(slug,domain):
+def check_listening_on_http(slug,domain):
     global exitcode
-    info("Checking that HTTP requests are redirected to HTTPS",1)
-    url = urllib2.urlopen("http://%s/" % domain)
-    location = url.geturl()
-    ssl_location = "https://%s/" % domain
-    if location == ssl_location:
-        good("Non-SSL requests to the Service Domain redirect to SSL",2)
+    info("Checking that HTTP requests are denied or redirected to HTTPS",1)
+    try:
+        url = urllib2.urlopen("http://%s/" % domain, timeout=2)
+        info("Service listens on HTTP, checking it redirects to HTTPS",2)
+        location = url.geturl()
+        ssl_location = "https://%s/" % domain
+        if location == ssl_location:
+            good("Non-SSL requests to the Service Domain redirect to SSL",2)
+            return 0
+        else:
+            exitcode = exitcode + 1
+            bad("Non-SSL requests to the Service Domain do not redirect to correct SSL location",2)
+            bad("http://%s/ -> %s" % (domain, location),3)
+            return 1
+    except IOError:
+        good("Service does not listen on HTTP",2)
         return 0
-    else:
-        exitcode = exitcode + 1
-        bad("Non-SSL requests to the Service Domain do not redirect to correct SSL location",2)
-        bad("http://%s/ -> %s" % (domain, location),3)
-        return 1
 
 def check_for_HSTS_header(slug,domain):
     global exitcode
@@ -82,7 +84,7 @@ def check_for_HSTS_header(slug,domain):
         header_array[key] = value
     if 'Strict-Transport-Security' in header_array.keys():
         good("Strict-Transport-Security (HSTS) Header is set",2)
-        good("Strict-Transport-Security: %s" % headers['Strict-Transport-Security'],3)
+        good("Strict-Transport-Security: %s" % header_array['Strict-Transport-Security'],3)
         return 0
     else:
         exitcode = exitcode + 1
@@ -123,7 +125,7 @@ for yamlfile in yamlfiles:
         info("    Domain: %s" % service_domain)
         service_fails += check_slug_links_to_domain(govuk_slug,service_domain)
         service_fails += check_bare_ssl_domain_redirects_to_slug(govuk_slug,service_domain)
-        service_fails += check_non_ssl_domain_redirects_to_ssl(govuk_slug,service_domain)
+        service_fails += check_listening_on_http(govuk_slug,service_domain)
         service_fails += check_for_HSTS_header(govuk_slug,service_domain)
         info("Results for %s" % title, 1)
         if service_fails == 0:
