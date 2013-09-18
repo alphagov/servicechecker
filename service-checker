@@ -62,7 +62,7 @@ def check_non_ssl_domain_redirects_to_ssl(slug,domain):
 def check_for_HSTS_header(slug,domain):
     global exitcode
     info("    Checking that Strict-Transport-Security is enforced")
-    url = urllib2.urlopen("http://%s/" % domain)
+    url = urllib2.urlopen("https://%s/" % domain)
     headers = url.info().headers
     header_array = {}
     for header in headers:
