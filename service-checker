@@ -78,13 +78,13 @@ def check_for_HSTS_header(slug,domain):
     info("Checking that Strict-Transport-Security is enforced",1)
     url = urllib2.urlopen("https://%s/" % domain)
     headers = url.info().headers
-    header_array = {}
+    header_dict = {}
     for header in headers:
         key, value = header.split(': ', 1)
-        header_array[key] = value
-    if 'Strict-Transport-Security' in header_array.keys():
+        header_dict[key] = value
+    if 'Strict-Transport-Security' in header_dict.keys():
         good("Strict-Transport-Security (HSTS) Header is set",2)
-        good("Strict-Transport-Security: %s" % header_array['Strict-Transport-Security'],3)
+        good("Strict-Transport-Security: %s" % header_dict['Strict-Transport-Security'],3)
         return 0
     else:
         exitcode = exitcode + 1
