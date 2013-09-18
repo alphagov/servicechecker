@@ -16,7 +16,9 @@ def error(message,indentlevel=0):
     sys.exit(1)
 
 def info(message,indentlevel=0):
-    print "\033[34mINFO:  %s%s\033[0m" % (indent(indentlevel),message)
+    if indentlevel == 0 or 'DEBUG' in os.environ.keys():
+        print "\033[34mINFO:  %s%s\033[0m" % (indent(indentlevel),message)
+
 
 def good(message,indentlevel=0):
     print "\033[32mGOOD:  %s%s\033[0m" % (indent(indentlevel),message)
