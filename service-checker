@@ -36,7 +36,6 @@ def header_dict(headers):
 # Check functions
 
 def check_slug_links_to_domain(slug,domain):
-    global exitcode
     info("Checking GOV.UK slug contains a link to the Service Domain",1)
     url = urllib2.urlopen("https://www.gov.uk%s" % slug)
     slug_text = url.read()
@@ -44,12 +43,10 @@ def check_slug_links_to_domain(slug,domain):
         good("The GOV.UK page (https://www.gov.uk%s) links to %s" % (slug,domain),2)
         return 0
     else:
-        exitcode = exitcode + 1
         bad("The GOV.UK page (http://www.gov.uk%s) does not link to %s" % (slug,domain),2)
         return 1
 
 def check_bare_ssl_domain_redirects_to_slug(slug,domain):
-    global exitcode
     info("Checking that the bare Service Domain redirects back to the GOV.UK Slug",1)
     url = urllib2.urlopen("https://%s/" % domain)
     location = url.geturl()
@@ -57,13 +54,11 @@ def check_bare_ssl_domain_redirects_to_slug(slug,domain):
         good("The bare Service Domain redirects to the GOV.UK slug.",2)
         return 0
     else:
-        exitcode = exitcode + 1
         bad("The Service Domain does not redirect to the GOV.UK slug.",2)
         bad("https://%s/ -> %s" % (domain,location),3)
         return 1
 
 def check_listening_on_http(slug,domain):
-    global exitcode
     info("Checking that HTTP requests are denied or redirected to HTTPS",1)
     try:
         url = urllib2.urlopen("http://%s/" % domain, timeout=2)
@@ -74,7 +69,6 @@ def check_listening_on_http(slug,domain):
             good("Non-SSL requests to the Service Domain redirect to SSL",2)
             return 0
         else:
-            exitcode = exitcode + 1
             bad("Non-SSL requests to the Service Domain do not redirect to correct SSL location",2)
             bad("http://%s/ -> %s" % (domain, location),3)
             return 1
@@ -83,7 +77,6 @@ def check_listening_on_http(slug,domain):
         return 0
 
 def check_for_HSTS_header(slug,domain):
-    global exitcode
     info("Checking that Strict-Transport-Security is enforced",1)
     url = urllib2.urlopen("https://%s/" % domain)
     headers = header_dict(url.info().headers)
@@ -92,12 +85,10 @@ def check_for_HSTS_header(slug,domain):
         good("Strict-Transport-Security: %s" % headers['strict-transport-security'],3)
         return 0
     else:
-        exitcode = exitcode + 1
         bad("Strict-Transport-Security (HSTS) Header is not set",2)
         return 1
 
 def check_for_robots_txt(domain):
-    global exitcode
     info("Checking that robots.txt is present",1)
     url = urllib2.urlopen("https://%s/robots.txt" % domain)
     headers = header_dict(url.info().headers)
@@ -109,7 +100,6 @@ def check_for_robots_txt(domain):
         return 1
 
 def check_cookies(domain, start_page):
-    global exitcode
     failed = 0
     info("Checking cookies are HttpOnly, Secure and scoped to the domain",1)
     url = urllib2.urlopen("https://%s%s" % (domain, start_page))
@@ -131,7 +121,6 @@ def check_cookies(domain, start_page):
                 bad("Cookie not scoped to %s" % domain,3)
                 failed = True
     if failed:
-        exitcode = exitcode + 1
         return 1
     else:
         good("All cookies are set correctly",2)
@@ -195,6 +184,7 @@ for yamlfile in yamlfiles:
             good("Service passed all checks", 2)
         else:
             bad("Service failed %s checks" % service_fails, 2)
+        exitcode += service_fails
 
 info("Summary results:")
 if exitcode > 0:
