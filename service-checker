@@ -19,6 +19,9 @@ def info(message,indentlevel=0):
     if indentlevel == 0 or 'DEBUG' in os.environ.keys():
         print "\033[34mINFO:  %s%s\033[0m" % (indent(indentlevel),message)
 
+def unknown(message,indentlevel=0):
+    if indentlevel == 0 or 'DEBUG' in os.environ.keys():
+        print "\033[36mUNKNOWN: %s%s\033[0m" % (indent(indentlevel),message)
 
 def good(message,indentlevel=0):
     if indentlevel == 0 or 'DEBUG' in os.environ.keys():
@@ -81,25 +84,35 @@ def check_listening_on_http(slug,domain):
 
 def check_for_HSTS_header(slug,domain):
     info("Checking that Strict-Transport-Security is enforced",1)
-    url = urllib2.urlopen("https://%s/" % domain)
-    headers = header_dict(url.info().headers)
-    if 'strict-transport-security' in headers.keys():
-        good("Strict-Transport-Security (HSTS) Header is set",2)
-        good("Strict-Transport-Security: %s" % headers['strict-transport-security'],3)
-        return 0
-    else:
-        bad("Strict-Transport-Security (HSTS) Header is not set",2)
+    try:
+        url = urllib2.urlopen("https://%s/" % domain)
+        headers = header_dict(url.info().headers)
+        if 'strict-transport-security' in headers.keys():
+            good("Strict-Transport-Security (HSTS) Header is set",2)
+            good("Strict-Transport-Security: %s" % headers['strict-transport-security'],3)
+            return 0
+        else:
+            bad("Strict-Transport-Security (HSTS) Header is not set",2)
+            return 1
+    except urllib2.HTTPError as e:
+        unknown("Bare domain gives a 404, unable to verify HSTS header",2)
+        unknown(e,3)
         return 1
 
 def check_for_robots_txt(domain):
     info("Checking that robots.txt is present",1)
-    url = urllib2.urlopen("https://%s/robots.txt" % domain)
-    headers = header_dict(url.info().headers)
-    if headers['content-type'] == "text/plain":
-        good("robots.txt exists and is text/plain",2)
-        return 0
-    else:
-        bad("robots.txt is not text/plain: %s" % headers['content-type'],2)
+    try:
+        url = urllib2.urlopen("https://%s/robots.txt" % domain)
+        headers = header_dict(url.info().headers)
+        if headers['content-type'] == "text/plain":
+            good("robots.txt exists and is text/plain",2)
+            return 0
+        else:
+            bad("robots.txt is not text/plain: %s" % headers['content-type'],2)
+            return 1
+    except urllib2.HTTPError as e:
+        unknown("Checking for robots.txt generated an error",2)
+        unknown(e,3)
         return 1
 
 def check_cookies(domain, start_page):
